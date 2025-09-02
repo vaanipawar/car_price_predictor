@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="static/CSS/style.css">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+    
+
+    <title>Car price pridictor</title>
+  </head>
+  <body class="bg-dark">
+    <div class="container">
+        <div class="row">
+            <div class="card mt-50" style="width:100%; height:100%">
+                <div class="card-header">
+                    <div class="col-12" style="text-align:center ;">
+                        <h1>Welcome to Car Price Predictor</h1>
+                    </div>
+
+                </div>
+                <div class="card-body">
+                    <form method="post" action="/predict" accept-charset="utf-8">
+                        <div class="col-10 form-group" style="text-align: center;">
+                            <label><b>Select Company:</b></label>
+                            <select class="Selectpicker form-control" id="company" name="company" required="1" onchange="load_car_models(this.id, 'car_models')">
+                              <option value="">Select Company</option>
+                              {% for company in companies %}  
+                                <option value="{{company}}">{{ company }}</option>
+                              {% endfor %}  
+
+                            </select>
+                        </div>
+                                                
+                        <div class="col-10 form-group" style="text-align: center;">
+                            <label><b>Select Model:</b></label>
+                            <select class="Selectpicker form-control" id="car_models" name="car_models" required="1">
+                              <!-- {% for model in car_models %}  
+                                <option value="{{model}}">{{ model }}</option>
+                              {% endfor %} -->
+
+                              <option value="">Select a company first</option>
+
+                                
+                             
+                                
+                            </select>
+                        </div>
+                        <div class="col-10 form-group" style="text-align: center;">
+                            <label><b>Select Year of Purchase:</b></label>
+                            <select class="Selectpicker form-control" id="year" name="year" required="1">
+                                <option value="">Select year</option>
+                              {% for year in years %}  
+                                <option value="{{year}}">{{ year}}</option>
+                              {% endfor %}  
+                            </select>
+                        </div>
+                                                
+                        <div class="col-10 form-group" style="text-align: center;">
+                            <label><b>Select Fuel Type:</b></label>
+                            <select class="Selectpicker form-control" id="fuel_type" name="fuel_type" required="1">
+                                <option value="">Select fuel_type</option>
+                                {% for fuel_type in fuel_types %}  
+                                <option value="{{fuel_type}}">{{ fuel_type}}</option>
+                              {% endfor %}  
+                            </select>
+                        </div>
+                                                
+                        <div class="col-10 form-group" style="text-align: center;">
+                          <label><b>Enter number of Kilometers travelled:</b></label>
+                          <input class="form-control" type="number" id="kilo_driven" name="kilo_driven" placeholder="Enter no. of Kilometers travelled" required>
+                        </div>
+                        <div class="col-10 form-group" style="text-align: center;">
+                                                    <button type= "button" class="btn btn-primary form-control" onclick="send_data()">Predict Price</button>
+                        </div>
+
+                    </form>
+                    <br>
+                    <div class="row">
+                      <div classs="col-12" style="text-align: center">
+                        <h3><span id="prediction"></span></h3>
+                      </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+        
+    </div>
+
+
+
+
+<script>
+    function load_car_models(company_id, car_model_id) {
+        var company = document.getElementById(company_id);
+        var car_models = document.getElementById(car_model_id);
+        
+        console.log("Company selected:", company.value);
+        
+        // Clear existing options except the first one
+        while (car_models.options.length > 1) {
+            car_models.remove(1);
+        }
+        
+        // If no company is selected, show default message
+        if (!company.value) {
+            console.log("No company selected");
+            addOption(car_models, "Select a company first");
+            return;
+        }
+        
+        // Show loading message
+        addOption(car_models, "Loading models...");
+        console.log("Fetching models for:", company.value);
+        
+        // Fetch models from the backend API
+        fetch(`/get_models/${encodeURIComponent(company.value)}`)
+            .then(response => {
+                console.log("Response status:", response.status);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(models => {
+                console.log("Models received:", models);
+                // Clear the loading message
+                car_models.options.length = 1;
+                
+                if (models && models.length > 0) {
+                    models.forEach(model => {
+                        addOption(car_models, model);
+                    });
+                    console.log("Models loaded successfully");
+                } else {
+                    addOption(car_models, "No models found");
+                    console.log("No models found for this company");
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching models:', error);
+                // Clear the loading message
+                car_models.options.length = 1;
+                addOption(car_models, "Error loading models");
+            });
+    }
+    
+    function addOption(selectElement, value) {
+        var option = document.createElement("option");
+        option.value = value;
+        option.text = value;
+        selectElement.add(option);
+    }
+    
+    // Add event listener to check if the function is being called
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM fully loaded and parsed");
+        var companySelect = document.getElementById('company');
+        if (companySelect) {
+            companySelect.addEventListener('change', function() {
+                console.log("Company selection changed");
+                load_car_models('company', 'car_models');
+            });
+        } else {
+            console.error("Company select element not found");
+        }
+    });
+
+    function form_handler(event) {
+        event.preventDefault();
+        send_data();
+    }
+    function send_data() {
+    // Get form values directly for validation
+    var company = document.getElementById('company').value;
+    var car_model = document.getElementById('car_models').value;
+    var year = document.getElementById('year').value;
+    var fuel_type = document.getElementById('fuel_type').value;
+    var kilo_driven = document.getElementById('kilo_driven').value;
+    
+    console.log("Form values:", company, car_model, year, fuel_type, kilo_driven);
+    
+    if (!company || !car_model || !year || !fuel_type || !kilo_driven) {
+        alert("Please fill all fields");
+        return;
+    }
+    
+    // Create FormData and append values manually
+    var fd = new FormData();
+    fd.append('company', company);
+    fd.append('car_models', car_model); // Note: This matches your Flask expectation
+    fd.append('year', year);
+    fd.append('fuel_type', fuel_type);
+    fd.append('kilo_driven', kilo_driven);
+    
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/predict', true);
+    document.getElementById("prediction").innerHTML = "Wait! Predicting Price......";
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == XMLHttpRequest.DONE) {
+            if (xhr.status == 200) {
+                document.getElementById("prediction").innerHTML = "Prediction: INR " + xhr.responseText;
+            } else {
+                document.getElementById("prediction").innerHTML = "Error: " + xhr.responseText;
+            }
+        }
+    };
+    
+    xhr.onerror = function() {
+        document.getElementById("prediction").innerHTML = "Error making prediction";
+    };
+    
+    xhr.send(fd);
+}
+    
+
+</script>
+        
+        
+        
+    
+    
+
+
+
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.3/dist/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.1.3/dist/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+  </body>
+</html>
